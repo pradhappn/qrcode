@@ -42,6 +42,38 @@
             animation: fadeIn 0.8s ease-out;
         }
 
+        .search-container {
+            margin-bottom: 25px;
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 14px 20px 14px 50px;
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(251, 191, 36, 0.3);
+            border-radius: 12px;
+            color: var(--text);
+            font-size: 1rem;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .search-input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 15px rgba(251, 191, 36, 0.2);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--primary);
+            font-size: 1.2rem;
+        }
+
         @keyframes fadeIn {
             from {
                 opacity: 0;
@@ -147,6 +179,145 @@
             padding: 40px;
             color: var(--text-muted);
         }
+
+        #mobileCards {
+            display: none;
+        }
+
+        .action-btn {
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+            margin: 2px;
+            font-weight: 500;
+        }
+
+        .edit-btn {
+            background: rgba(59, 130, 246, 0.2);
+            color: #60a5fa;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+
+        .edit-btn:hover {
+            background: #3b82f6;
+            color: #fff;
+        }
+
+        .delete-btn {
+            background: rgba(239, 68, 68, 0.2);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .delete-btn:hover {
+            background: #ef4444;
+            color: #fff;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 10px;
+            }
+
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 20px;
+            }
+
+            .brand-name {
+                font-size: 1.5rem;
+            }
+
+            .download-btn {
+                width: 100%;
+                text-align: center;
+                padding: 10px;
+            }
+
+            /* Hide Table and show cards on mobile */
+            .table-container {
+                background: transparent;
+                border: none;
+                box-shadow: none;
+                overflow: visible;
+            }
+
+            table {
+                display: none;
+            }
+
+            #mobileCards {
+                display: block;
+            }
+
+            .mobile-card {
+                display: block;
+                background: var(--card-bg);
+                backdrop-filter: blur(12px);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                border-radius: 16px;
+                padding: 20px;
+                margin-bottom: 20px;
+                box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+            }
+
+            .card-row {
+                display: flex;
+                justify-content: space-between;
+                margin-bottom: 12px;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+                padding-bottom: 8px;
+            }
+
+            .card-row:last-child {
+                border-bottom: none;
+                margin-bottom: 0;
+            }
+
+            .card-label {
+                color: var(--primary);
+                font-size: 0.75rem;
+                text-transform: uppercase;
+                font-weight: 600;
+            }
+
+            .card-value {
+                font-size: 0.9rem;
+                text-align: right;
+                word-break: break-all;
+            }
+
+            .card-actions {
+                margin-top: 15px;
+                display: flex;
+                gap: 10px;
+            }
+
+            .card-actions .action-btn {
+                flex: 1;
+                padding: 12px;
+                text-align: center;
+                font-size: 0.9rem;
+            }
+
+            th,
+            td {
+                padding: 12px 8px;
+                font-size: 0.8rem;
+            }
+
+            .table-container {
+                overflow-x: auto;
+            }
+
+            table {
+                min-width: 600px;
+            }
+        }
     </style>
 </head>
 
@@ -166,28 +337,42 @@
             <h2 id="totalCount" style="font-size: 2rem;">--</h2>
         </div>
 
-        <div class="table-container">
-            <table>
+        <div class="search-container">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="searchInput" class="search-input"
+                placeholder="Search by name, email, phone, city or ID..." oninput="filterData()">
+        </div>
+
+        <div class="table-container" id="mainContainer">
+            <!-- For Desktop: Table -->
+            <table id="desktopTable">
                 <thead>
                     <tr>
+                        <th>#</th>
                         <th>Member ID</th>
                         <th>Name</th>
                         <th>Email</th>
                         <th>Phone</th>
                         <th>City</th>
                         <th>Date</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody id="tableBody">
                     <tr>
-                        <td colspan="6" class="loading">Loading data...</td>
+                        <td colspan="8" class="loading">Loading data...</td>
                     </tr>
                 </tbody>
             </table>
+
+            <!-- For Mobile: Cards (populated by JS) -->
+            <div id="mobileCards"></div>
         </div>
     </div>
 
     <script>
+        let userData = [];
+
         async function fetchData() {
             try {
                 const API_BASE = window.location.protocol === "file:"
@@ -198,32 +383,164 @@
                 document.getElementById('downloadLink').href = `${API_BASE}/api/admin/download`;
 
                 const res = await fetch(`${API_BASE}/api/admin/data`);
-                const data = await res.json();
+                userData = await res.json();
 
                 const tableBody = document.getElementById('tableBody');
                 const totalCount = document.getElementById('totalCount');
 
-                if (data.length === 0) {
-                    tableBody.innerHTML = '<tr><td colspan="6" class="loading">No registrations yet.</td></tr>';
+                if (userData.length === 0) {
+                    const noDataMsg = '<tr><td colspan="8" class="loading">No registrations yet.</td></tr>';
+                    document.getElementById('tableBody').innerHTML = noDataMsg;
+                    document.getElementById('mobileCards').innerHTML = '<div class="loading">No registrations yet.</div>';
                     totalCount.innerText = '0';
                     return;
                 }
 
-                totalCount.innerText = data.length;
-                tableBody.innerHTML = data.map(user => `
-          <tr>
-            <td class="member-id">#${user.userId}</td>
-            <td>${user.name}</td>
-            <td>${user.email}</td>
-            <td>${user.phone}</td>
-            <td>${user.city}</td>
-            <td style="color: var(--text-muted); font-size: 0.8rem;">${new Date(user.time).toLocaleString()}</td>
-          </tr>
-        `).join('');
+                totalCount.innerText = userData.length;
+                renderContent(userData);
 
             } catch (err) {
                 console.error('Error:', err);
-                document.getElementById('tableBody').innerHTML = '<tr><td colspan="6" class="loading" style="color: #ef4444;">Error loading data. Ensure backend is running.</td></tr>';
+                const errorMsg = '<tr><td colspan="8" class="loading" style="color: #ef4444;">Error loading data. Ensure backend is running.</td></tr>';
+                document.getElementById('tableBody').innerHTML = errorMsg;
+                document.getElementById('mobileCards').innerHTML = '<div class="loading" style="color: #ef4444;">Error loading data. Ensure backend is running.</div>';
+            }
+        }
+
+        function filterData() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            const filteredData = userData.filter(user =>
+                user.name.toLowerCase().includes(query) ||
+                user.email.toLowerCase().includes(query) ||
+                user.phone.toLowerCase().includes(query) ||
+                user.city.toLowerCase().includes(query) ||
+                user.userId.toLowerCase().includes(query)
+            );
+
+            // Re-render based on filtered results
+            renderContent(filteredData);
+
+            // Optionally update the total count to show "Matching Results"
+            document.getElementById('totalCount').innerText = filteredData.length;
+        }
+
+        function renderContent(data) {
+            // Render Desktop Table
+            const tableBody = document.getElementById('tableBody');
+            tableBody.innerHTML = data.map((user, index) => `
+                <tr>
+                    <td style="color: var(--text-muted); font-size: 0.8rem;">${index + 1}</td>
+                    <td class="member-id">#${user.userId}</td>
+                    <td>${user.name}</td>
+                    <td>${user.email}</td>
+                    <td>${user.phone}</td>
+                    <td>${user.city}</td>
+                    <td style="color: var(--text-muted); font-size: 0.8rem;">${new Date(user.time).toLocaleString()}</td>
+                    <td>
+                        <button class="action-btn edit-btn" onclick="editUser('${user.userId}')">Edit</button>
+                        <button class="action-btn delete-btn" onclick="deleteUser('${user.userId}')">Delete</button>
+                    </td>
+                </tr>
+            `).join('');
+
+            // Render Mobile Cards
+            const mobileCards = document.getElementById('mobileCards');
+            mobileCards.innerHTML = data.map((user, index) => `
+                <div class="mobile-card">
+                    <div class="card-row">
+                        <span class="card-label"># Index</span>
+                        <span class="card-value">${index + 1}</span>
+                    </div>
+                    <div class="card-row">
+                        <span class="card-label">Member ID</span>
+                        <span class="member-id card-value">#${user.userId}</span>
+                    </div>
+                    <div class="card-row">
+                        <span class="card-label">Name</span>
+                        <span class="card-value">${user.name}</span>
+                    </div>
+                    <div class="card-row">
+                        <span class="card-label">Email</span>
+                        <span class="card-value">${user.email}</span>
+                    </div>
+                    <div class="card-row">
+                        <span class="card-label">Phone</span>
+                        <span class="card-value">${user.phone}</span>
+                    </div>
+                    <div class="card-row">
+                        <span class="card-label">City</span>
+                        <span class="card-value">${user.city}</span>
+                    </div>
+                    <div class="card-row">
+                        <span class="card-label">Date</span>
+                        <span class="card-value" style="color: var(--text-muted);">${new Date(user.time).toLocaleString()}</span>
+                    </div>
+                    <div class="card-actions">
+                        <button class="action-btn edit-btn" onclick="editUser('${user.userId}')">Edit Member</button>
+                        <button class="action-btn delete-btn" onclick="deleteUser('${user.userId}')">Delete Member</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function deleteUser(userId) {
+            if (!confirm(`Are you sure you want to delete member #${userId}?`)) return;
+
+            try {
+                const API_BASE = window.location.protocol === "file:" ? "http://localhost:5000" : "";
+                const res = await fetch(`${API_BASE}/api/admin/user/${userId}`, {
+                    method: 'DELETE'
+                });
+                const result = await res.json();
+
+                if (result.success) {
+                    alert('User deleted successfully');
+                    fetchData();
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (err) {
+                console.error('Delete error:', err);
+                alert('Failed to delete user');
+            }
+        }
+
+        async function editUser(userId) {
+            const user = userData.find(u => u.userId === userId);
+            if (!user) return;
+
+            const newName = prompt("Edit Name:", user.name);
+            if (newName === null) return;
+            const newEmail = prompt("Edit Email:", user.email);
+            if (newEmail === null) return;
+            const newPhone = prompt("Edit Phone:", user.phone);
+            if (newPhone === null) return;
+            const newCity = prompt("Edit City:", user.city);
+            if (newCity === null) return;
+
+            try {
+                const API_BASE = window.location.protocol === "file:" ? "http://localhost:5000" : "";
+                const res = await fetch(`${API_BASE}/api/admin/user/${userId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: newName,
+                        email: newEmail,
+                        phone: newPhone,
+                        city: newCity
+                    })
+                });
+                const result = await res.json();
+
+                if (result.success) {
+                    alert('User updated successfully');
+                    fetchData();
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (err) {
+                console.error('Update error:', err);
+                alert('Failed to update user');
             }
         }
 

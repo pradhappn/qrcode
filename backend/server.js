@@ -118,6 +118,33 @@ app.get("/api/admin/data", async (req, res) => {
   }
 });
 
+// Admin API: Update user
+app.put("/api/admin/user/:id", async (req, res) => {
+  try {
+    const { name, email, phone, city } = req.body;
+    const updatedUser = await User.findOneAndUpdate(
+      { userId: req.params.id },
+      { name, email, phone, city },
+      { new: true }
+    );
+    if (!updatedUser) return res.status(404).json({ error: "User not found" });
+    res.json({ success: true, user: updatedUser });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin API: Delete user
+app.delete("/api/admin/user/:id", async (req, res) => {
+  try {
+    const deletedUser = await User.findOneAndDelete({ userId: req.params.id });
+    if (!deletedUser) return res.status(404).json({ error: "User not found" });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Admin API: Download Excel
 app.get("/api/admin/download", async (req, res) => {
   try {
