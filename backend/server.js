@@ -152,7 +152,7 @@ app.get("/admin", (req, res) => {
 });
 
 // Serve frontend for any other non-API route
-app.get("*", (req, res, next) => {
+app.get("/{*splat}", (req, res, next) => {
   if (req.url.startsWith("/api")) return next(); // Don't serve HTML for broken API calls
   res.sendFile(path.join(__dirname, "../frontend/index.html"));
 });
