@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RICH WAY | User Registration</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #fbbf24;
+      --primary-dark: #d97706;
+      --bg: #0f172a;
+      --card-bg: rgba(30, 41, 59, 0.7);
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Poppins', sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      background-image:
+        radial-gradient(at 0% 0%, hsla(253, 16%, 7%, 1) 0, transparent 50%),
+        radial-gradient(at 50% 0%, hsla(225, 39%, 30%, 1) 0, transparent 50%),
+        radial-gradient(at 100% 0%, hsla(339, 49%, 30%, 1) 0, transparent 50%);
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: var(--text);
+      overflow: hidden;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 420px;
+      padding: 20px;
+      animation: fadeIn 0.8s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    form,
+    .success-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 40px;
+      border-radius: 24px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      text-align: center;
+    }
+
+    .brand-header {
+      margin-bottom: 30px;
+    }
+
+    .brand-name {
+      font-size: 2.5rem;
+      font-weight: 700;
+      letter-spacing: -1px;
+      background: linear-gradient(to right, #fbbf24, #f59e0b);
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 5px;
+    }
+
+    .brand-tagline {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+
+    h2 {
+      font-size: 1.5rem;
+      margin-bottom: 25px;
+      font-weight: 600;
+    }
+
+    .input-group {
+      position: relative;
+      margin-bottom: 20px;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px 16px;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      color: white;
+      font-size: 1rem;
+      transition: all 0.3s ease;
+      outline: none;
+    }
+
+    input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px rgba(251, 191, 36, 0.15);
+      background: rgba(15, 23, 42, 0.8);
+    }
+
+    input::placeholder {
+      color: #64748b;
+    }
+
+    button {
+      width: 100%;
+      padding: 14px;
+      margin-top: 10px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      color: #000;
+      border: none;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 4px 6px -1px rgba(251, 191, 36, 0.2);
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 15px -3px rgba(251, 191, 36, 0.3);
+      filter: brightness(1.1);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    .success-icon {
+      font-size: 4rem;
+      color: var(--primary);
+      margin-bottom: 20px;
+    }
+
+    .user-info {
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .info-label {
+      color: var(--text-muted);
+      font-size: 0.875rem;
+    }
+
+    .info-value {
+      font-weight: 600;
+      font-size: 1.1rem;
+      margin-bottom: 10px;
+    }
+
+    /* Loading state */
+    button.loading {
+      opacity: 0.7;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="container" id="app">
+    <form id="form">
+      <div class="brand-header">
+        <h1 class="brand-name">RICH WAY</h1>
+        <p class="brand-tagline">Excellence Redefined</p>
+      </div>
+
+      <h2>User Details</h2>
+
+      <div class="input-group">
+        <input id="name" placeholder="Full Name" required>
+      </div>
+      <div class="input-group">
+        <input id="email" type="email" placeholder="Email Address" required>
+      </div>
+      <div class="input-group">
+        <input id="phone" placeholder="Phone Number" required>
+      </div>
+      <div class="input-group">
+        <input id="city" placeholder="Current City" required>
+      </div>
+
+      <button type="submit" id="submitBtn">Join the Family</button>
+    </form>
+  </div>
+
+  <script>
+    const form = document.getElementById("form");
+    const app = document.getElementById("app");
+    const submitBtn = document.getElementById("submitBtn");
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      submitBtn.classList.add("loading");
+      submitBtn.innerText = "Processing...";
+      submitBtn.disabled = true;
+
+      const payload = {
+        name: document.getElementById("name").value,
+        email: document.getElementById("email").value,
+        phone: document.getElementById("phone").value,
+        city: document.getElementById("city").value
+      };
+
+      try {
+        const res = await fetch("/submit", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+          app.innerHTML = `
+            <div class="success-card">
+              <div class="success-icon">✨</div>
+              <h1 class="brand-name">RICH WAY</h1>
+              <h2 style="margin-bottom: 10px;">Welcome to the Family!</h2>
+              <p style="color: var(--text-muted); margin-bottom: 20px;">Your registration was successful.</p>
+              
+              <div class="user-info">
+                <p class="info-label">Member Name</p>
+                <p class="info-value">${data.name}</p>
+                
+                <p class="info-label">Member ID</p>
+                <p class="info-value" style="color: var(--primary); font-family: monospace; letter-spacing: 1px;">#${data.userId}</p>
+              </div>
+              
+              <button onclick="window.location.reload()" style="margin-top: 20px; background: rgba(255,255,255,0.05); color: white; border: 1px solid rgba(255,255,255,0.1);">Back to Home</button>
+            </div>
+          `;
+        } else {
+          alert("Submission Failed: " + (data.message || "Unknown error"));
+          resetBtn();
+        }
+      } catch (error) {
+        console.error("Error:", error);
+        alert("Server Error. Please ensure the backend is running.");
+        resetBtn();
+      }
+    });
+
+    function resetBtn() {
+      submitBtn.classList.remove("loading");
+      submitBtn.innerText = "Join the Family";
+      submitBtn.disabled = false;
+    }
+  </script>
+
+</body>
+
+</html>
