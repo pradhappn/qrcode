@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require("express");
 const cors = require("cors");
 const bodyParser = require("body-parser");
@@ -102,8 +103,8 @@ app.post("/submit", async (req, res) => {
   }
 });
 
-// Serve frontend for any other route
-app.get("*", (req, res) => {
+// Serve frontend for any other route (Express 5 compatible wildcard)
+app.get("(.*)", (req, res) => {
   res.sendFile(path.join(__dirname, "../frontend/index.html"));
 });
 
