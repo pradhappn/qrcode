@@ -103,8 +103,8 @@ app.post("/submit", async (req, res) => {
   }
 });
 
-// Serve frontend for any other route (Express 5 compatible wildcard)
-app.get("(.*)", (req, res) => {
+// Serve frontend for any other route (Express 5 compatible named wildcard)
+app.get("/{*splat}", (req, res) => {
   res.sendFile(path.join(__dirname, "../frontend/index.html"));
 });
 
