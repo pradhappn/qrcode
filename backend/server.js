@@ -2,33 +2,37 @@ require('dotenv').config();
 const express = require("express");
 const cors = require("cors");
 const bodyParser = require("body-parser");
-const { GoogleSpreadsheet } = require("google-spreadsheet");
-const { JWT } = require("google-auth-library");
+const mongoose = require("mongoose");
+const XLSX = require("xlsx");
 const fs = require("fs-extra");
 const nodemailer = require("nodemailer");
 const path = require("path");
 
 const app = express();
 
-// --- Google Sheets Configuration ---
-const serviceAccountAuth = new JWT({
-  email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-  key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
-  scopes: ["https://www.googleapis.com/auth/spreadsheets"],
+// --- MongoDB Configuration ---
+const mongoURI = process.env.MONGODB_URI;
+
+if (!mongoURI) {
+  console.error("❌ ERROR: MONGODB_URI is missing in your .env file!");
+  process.exit(1);
+}
+
+mongoose.connect(mongoURI)
+  .then(() => console.log("✅ Connected to MongoDB Atlas"))
+  .catch(err => console.error("❌ MongoDB Connection Error:", err));
+
+const userSchema = new mongoose.Schema({
+  name: String,
+  email: String,
+  phone: String,
+  city: String,
+  userId: String,
+  time: { type: Date, default: Date.now }
 });
 
-const doc = new GoogleSpreadsheet(process.env.GOOGLE_SHEET_ID, serviceAccountAuth);
-
-async function initSheet() {
-  try {
-    await doc.loadInfo();
-    console.log(`Connected to Google Sheet: ${doc.title}`);
-  } catch (err) {
-    console.error("Google Sheets initialization failed:", err.message);
-  }
-}
-initSheet();
-// -----------------------------------
+const User = mongoose.model("User", userSchema);
+// ------------------------------
 
 // Use Environment Variables for Email
 const transporter = nodemailer.createTransport({
@@ -39,33 +43,34 @@ const transporter = nodemailer.createTransport({
   }
 });
 
+// Request Logger
+app.use((req, res, next) => {
+  console.log(`${new Date().toLocaleTimeString()} - ${req.method} ${req.url}`);
+  next();
+});
+
 app.use(cors());
 app.use(bodyParser.json());
 
 // Serve Frontend Static Files
 app.use(express.static(path.join(__dirname, "../frontend")));
 
-// API Endpoint
+// Registration Endpoint
 app.post("/submit", async (req, res) => {
   try {
     const { name, email, phone, city } = req.body;
     const userId = "RW" + Math.floor(1000 + Math.random() * 9000);
 
-    // Save to Google Sheets
-    try {
-      const sheet = doc.sheetsByIndex[0]; // Assumes first sheet
-      await sheet.addRow({
-        Name: name,
-        Email: email,
-        Phone: phone,
-        City: city,
-        UserID: userId,
-        Time: new Date().toLocaleString()
-      });
-      console.log("Data saved to Google Sheets");
-    } catch (sheetErr) {
-      console.error("Failed to save to Google Sheets:", sheetErr.message);
-    }
+    // Save to MongoDB
+    const newUser = new User({
+      name,
+      email,
+      phone,
+      city,
+      userId
+    });
+    await newUser.save();
+    console.log(`✅ User ${name} registered`);
 
     // Send Email to User (Non-blocking background task)
     transporter.sendMail({
@@ -86,9 +91,9 @@ app.post("/submit", async (req, res) => {
           </div>
         `
     }).then(() => {
-      console.log(`Email sent successfully to ${email}`);
+      console.log(`📧 Email sent to ${email}`);
     }).catch((mailErr) => {
-      console.error("Email sending failed:", mailErr.message);
+      console.error("❌ Email failed:", mailErr.message);
     });
 
     res.json({
@@ -98,13 +103,57 @@ app.post("/submit", async (req, res) => {
     });
 
   } catch (err) {
-    console.error("Submission error:", err);
+    console.error("❌ Submission error:", err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// Serve frontend for any other route (Express 5 compatible named wildcard)
-app.get("/{*splat}", (req, res) => {
+// Admin API: Get all users
+app.get("/api/admin/data", async (req, res) => {
+  try {
+    const users = await User.find().sort({ time: -1 });
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin API: Download Excel
+app.get("/api/admin/download", async (req, res) => {
+  try {
+    const users = await User.find().lean();
+
+    const excelData = users.map(u => ({
+      Name: u.name,
+      Email: u.email,
+      Phone: u.phone,
+      City: u.city,
+      UserID: u.userId,
+      Registration_Time: u.time.toLocaleString()
+    }));
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(excelData);
+    XLSX.utils.book_append_sheet(wb, ws, "Members");
+
+    const buffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", "attachment; filename=RichWay_Members.xlsx");
+    res.send(buffer);
+  } catch (err) {
+    res.status(500).send("Export failed: " + err.message);
+  }
+});
+
+// Serve Admin Page
+app.get("/admin", (req, res) => {
+  res.sendFile(path.join(__dirname, "../frontend/admin.html"));
+});
+
+// Serve frontend for any other non-API route
+app.get("*", (req, res, next) => {
+  if (req.url.startsWith("/api")) return next(); // Don't serve HTML for broken API calls
   res.sendFile(path.join(__dirname, "../frontend/index.html"));
 });
 
