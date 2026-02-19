@@ -2,22 +2,42 @@ require('dotenv').config();
 const express = require("express");
 const cors = require("cors");
 const bodyParser = require("body-parser");
-const XLSX = require("xlsx");
+const { GoogleSpreadsheet } = require("google-spreadsheet");
+const { JWT } = require("google-auth-library");
 const fs = require("fs-extra");
 const nodemailer = require("nodemailer");
 const path = require("path");
 
 const app = express();
 
+// --- Google Sheets Configuration ---
+const serviceAccountAuth = new JWT({
+  email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+  key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
+  scopes: ["https://www.googleapis.com/auth/spreadsheets"],
+});
+
+const doc = new GoogleSpreadsheet(process.env.GOOGLE_SHEET_ID, serviceAccountAuth);
+
+async function initSheet() {
+  try {
+    await doc.loadInfo();
+    console.log(`Connected to Google Sheet: ${doc.title}`);
+  } catch (err) {
+    console.error("Google Sheets initialization failed:", err.message);
+  }
+}
+initSheet();
+// -----------------------------------
+
 // Use Environment Variables for Email
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
-    user: process.env.EMAIL_USER, // Set this in Render Dashboard
-    pass: process.env.EMAIL_PASS  // Set this in Render Dashboard
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS
   }
 });
-
 
 app.use(cors());
 app.use(bodyParser.json());
@@ -25,45 +45,27 @@ app.use(bodyParser.json());
 // Serve Frontend Static Files
 app.use(express.static(path.join(__dirname, "../frontend")));
 
-const FILE_PATH = path.join(__dirname, "data", "formData.xlsx");
-
-// Ensure folder & file exist
-fs.ensureDirSync(path.join(__dirname, "data"));
-fs.ensureFileSync(FILE_PATH);
-
-// Create Excel with headers if empty
-if (fs.statSync(FILE_PATH).size === 0) {
-  const wb = XLSX.utils.book_new();
-  const ws = XLSX.utils.json_to_sheet([
-    { Name: "", Email: "", Phone: "", City: "", Time: "" }
-  ]);
-  XLSX.utils.book_append_sheet(wb, ws, "Submissions");
-  XLSX.writeFile(wb, FILE_PATH);
-}
-
 // API Endpoint
 app.post("/submit", async (req, res) => {
   try {
     const { name, email, phone, city } = req.body;
-
     const userId = "RW" + Math.floor(1000 + Math.random() * 9000);
 
-    const workbook = XLSX.readFile(FILE_PATH);
-    const sheet = workbook.Sheets["Submissions"];
-    const data = XLSX.utils.sheet_to_json(sheet);
-
-    data.push({
-      Name: name,
-      Email: email,
-      Phone: phone,
-      City: city,
-      UserID: userId,
-      Time: new Date().toLocaleString()
-    });
-
-    const newSheet = XLSX.utils.json_to_sheet(data);
-    workbook.Sheets["Submissions"] = newSheet;
-    XLSX.writeFile(workbook, FILE_PATH);
+    // Save to Google Sheets
+    try {
+      const sheet = doc.sheetsByIndex[0]; // Assumes first sheet
+      await sheet.addRow({
+        Name: name,
+        Email: email,
+        Phone: phone,
+        City: city,
+        UserID: userId,
+        Time: new Date().toLocaleString()
+      });
+      console.log("Data saved to Google Sheets");
+    } catch (sheetErr) {
+      console.error("Failed to save to Google Sheets:", sheetErr.message);
+    }
 
     // Send Email to User (Non-blocking background task)
     transporter.sendMail({
