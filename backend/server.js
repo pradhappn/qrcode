@@ -65,13 +65,12 @@ app.post("/submit", async (req, res) => {
     workbook.Sheets["Submissions"] = newSheet;
     XLSX.writeFile(workbook, FILE_PATH);
 
-    // Send Email to User (Non-blocking)
-    try {
-      await transporter.sendMail({
-        from: `RICH WAY <yourgmail@gmail.com>`,
-        to: email,
-        subject: "Welcome To Rich Way Family 🎉",
-        html: `
+    // Send Email to User (Non-blocking background task)
+    transporter.sendMail({
+      from: `RICH WAY <yourgmail@gmail.com>`,
+      to: email,
+      subject: "Welcome To Rich Way Family 🎉",
+      html: `
           <div style="font-family: sans-serif; padding: 20px; color: #333;">
             <h1 style="color: #fbbf24;">Welcome to the Family!</h1>
             <p>Hello <b>${name}</b>,</p>
@@ -84,12 +83,11 @@ app.post("/submit", async (req, res) => {
             <p style="font-size: 12px; color: #94a3b8;">Ref: RW-${userId}</p>
           </div>
         `
-      });
-
+    }).then(() => {
       console.log(`Email sent successfully to ${email}`);
-    } catch (mailErr) {
+    }).catch((mailErr) => {
       console.error("Email sending failed:", mailErr.message);
-    }
+    });
 
     res.json({
       success: true,
